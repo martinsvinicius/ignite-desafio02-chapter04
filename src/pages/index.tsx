@@ -18,16 +18,20 @@ type Image = {
 
 type GetImages = {
   data: Image[];
-  after: string;
+  after: string | null;
 };
 
 export default function Home(): JSX.Element {
   async function fetchImages({ pageParam = null }): Promise<GetImages> {
     const after = pageParam ? pageParam : '';
 
-    const response = await api.get(`/images?after=${after}`);
+    const { data } = await api.get(`/api/images`, {
+      params: {
+        after,
+      },
+    });
 
-    return response.data;
+    return data;
   }
 
   const {
@@ -72,10 +76,11 @@ export default function Home(): JSX.Element {
       )}
       <Box maxW={1120} px={20} mx="auto" my={20}>
         <CardList cards={formattedData} />
-        {!hasNextPage && (
+        {hasNextPage && (
           <Button
             onClick={handleFetchNextPage}
-            disabled={isFetchingNextPage}
+            role="button"
+            w={['100%', 'auto']}
           >
             {isFetchingNextPage ? 'Carregando...' : 'Carregar mais'}
           </Button>
