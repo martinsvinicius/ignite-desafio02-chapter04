@@ -1,4 +1,4 @@
-import { Button, Box } from '@chakra-ui/react';
+import { Button, Box, Text } from '@chakra-ui/react';
 import { useMemo } from 'react';
 import { useInfiniteQuery } from 'react-query';
 
@@ -8,7 +8,28 @@ import { api } from '../services/api';
 import { Loading } from '../components/Loading';
 import { Error } from '../components/Error';
 
+type Image = {
+  title: string;
+  description: string;
+  url: string;
+  ts: number;
+  id: string;
+};
+
+type GetImages = {
+  data: Image[];
+  after: string;
+};
+
 export default function Home(): JSX.Element {
+  async function fetchImages({ pageParam = null }): Promise<GetImages> {
+    const after = pageParam ? pageParam : '';
+
+    const response = await api.get(`/images?after=${after}`);
+
+    return response.data;
+  }
+
   const {
     data,
     isLoading,
@@ -16,28 +37,49 @@ export default function Home(): JSX.Element {
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteQuery(
-    'images',
-    // TODO AXIOS REQUEST WITH PARAM
-    ,
-    // TODO GET AND RETURN NEXT PAGE PARAM
-  );
+  } = useInfiniteQuery('images', fetchImages, {
+    getNextPageParam: lastResponse => lastResponse.after,
+  });
 
   const formattedData = useMemo(() => {
-    // TODO FORMAT AND FLAT DATA ARRAY
+    return data ? data.pages.map(page => page.data).flat() : [];
   }, [data]);
 
-  // TODO RENDER LOADING SCREEN
+  const handleFetchNextPage = () => {
+    if (!hasNextPage) return;
 
-  // TODO RENDER ERROR SCREEN
+    fetchNextPage();
+  };
+
+  if (isLoading) return <Loading />;
+
+  if (isError) return <Error />;
 
   return (
     <>
       <Header />
-
+      {!(formattedData.length > 0) && (
+        <Box
+          display="flex"
+          h="50vh"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Text>
+            Nada por aqui... Faça alguns uploads para visualizar as imagens.
+          </Text>
+        </Box>
+      )}
       <Box maxW={1120} px={20} mx="auto" my={20}>
         <CardList cards={formattedData} />
-        {/* TODO RENDER LOAD MORE BUTTON IF DATA HAS NEXT PAGE */}
+        {!hasNextPage && (
+          <Button
+            onClick={handleFetchNextPage}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Carregando...' : 'Carregar mais'}
+          </Button>
+        )}
       </Box>
     </>
   );
